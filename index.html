@@ -1,0 +1,604 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    
+    <title>Block Knocks: Interactive Generative Art Arcade</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Interactive WebGL shader visualizer. Control fractal patterns and colors in real-time.">
+    <meta name="keywords" content="Block Knocks, generative art, interactive art, WebGL, shader, visualizer, fractal art, abstract art">
+    <meta name="author" content="Chris Pirillo">
+    <link rel="canonical" href="https://pirillo.com/arcade/block-knocks.html">
+
+    <!-- 
+      Step 1: SEO Optimization (Open Graph & Twitter Cards)
+      - Provides rich snippets for social media sharing.
+    -->
+    <!-- Open Graph (Facebook, LinkedIn, etc.) -->
+    <meta property="og:title" content="Block Knocks: Interactive Generative Art Arcade">
+    <meta property="og:description" content="A mesmerizing interactive generative art visualizer. Control fractal patterns and colors in real-time.">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://pirillo.com/arcade/block-knocks.html">
+    <meta property="og:image" content="https://pirillo.com/arcade/images/block-knocks.png">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta property="og:site_name" content="Pirillo's Arcade">
+    
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:site" content="@ChrisPirillo">
+    <meta name="twitter:creator" content="@ChrisPirillo">
+    <meta name="twitter:title" content="Block Knocks: Interactive Generative Art Arcade">
+    <meta name="twitter:description" content="Control mesmerizing fractal patterns and colors in real-time with this WebGL visualizer.">
+    <meta name="twitter:image" content="https://pirillo.com/arcade/images/block-knocks.png">
+
+    <!-- 
+      Step 2 & 3: Performance & CWV Optimization (Resource Hints)
+      - Preconnect to critical third-party origins (Tailwind CDN, Google Fonts).
+      - Preload Google Fonts CSS as "style" and use `onload` to make it non-render-blocking.
+      - This minimizes FOIT/FOUT and improves LCP.
+    -->
+    <link rel="preconnect" href="https://cdn.tailwindcss.com">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    
+    <!-- Non-render-blocking font stylesheet load. Already includes `display=swap`. -->
+    <link rel="preload" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap" as="style" onload="this.onload=null;this.rel='stylesheet'">
+    <!-- Fallback for browsers without JavaScript -->
+    <noscript>
+      <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
+    </noscript>
+    
+    <!-- 
+      Step 4: Technical Enhancements
+      - Tailwind CSS script is left as-is per explicit instruction.
+      - Deferring it would cause a massive CLS/FOUC, violating the "don't break layout" constraint.
+    -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <style>
+        /* Use Inter font */
+        html {
+            font-family: 'Inter', sans-serif;
+        }
+        
+        /* Ensure canvas is always behind everything */
+        #shader-canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            background-color: #000;
+        }
+
+        /* Styling for the slide-out menu */
+        #config-menu {
+            transition: transform 0.3s ease-in-out;
+            /* Using transform for translate is performant (compositor-only) and avoids CLS. */
+        }
+
+        #config-menu.open {
+            transform: translateX(0);
+        }
+        
+        /* Custom scrollbar for the menu */
+        #menu-content::-webkit-scrollbar {
+            width: 6px;
+        }
+        #menu-content::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+        }
+        #menu-content::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.4);
+            border-radius: 10px;
+        }
+        #menu-content::-webkit-scrollbar-thumb:hover {
+            background: rgba(255, 255, 255, 0.6);
+        }
+    </style>
+    <!-- 
+      Step 4: Google Analytics Snippet
+      - Added as requested. The script is already marked 'async'.
+    -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-1CQ4D3VQ3L"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+    
+      gtag('config', 'G-1CQ4D3VQ3L');
+    </script>
+    
+    <!-- 
+      Step 1: SEO Optimization (Structured Data)
+      - Added JSON-LD schema for `CreativeWork` (for the art) and `WebPage`.
+      - This helps Google understand the content of the page.
+    -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "WebPage",
+      "name": "Block Knocks: Interactive Generative Art Arcade",
+      "description": "An interactive WebGL shader visualizer where you can control and customize mesmerizing generative fractal art in real-time.",
+      "url": "https://pirillo.com/arcade/block-knocks.html",
+      "mainEntity": {
+        "@type": "CreativeWork",
+        "name": "Block Knocks",
+        "author": {
+          "@type": "Person",
+          "name": "Chris Pirillo",
+          "url": "https://chris.pirillo.com"
+        },
+        "genre": "Generative Art",
+        "image": "https://pirillo.com/arcade/images/block-knocks.png",
+        "interactionStatistic": {
+            "@type": "InteractionCounter",
+            "interactionType": "https://schema.org/InteractAction",
+            "userInteractionCount": 0 
+        }
+      }
+    }
+    </script>
+</head>
+<body class="bg-black text-white m-0 p-0 overflow-hidden">
+
+    <!-- 
+      Step 1: SEO Optimization (Semantic HTML)
+      - Wrapped the primary content (canvas and control button) in a <main> tag.
+    -->
+    <main>
+        <!-- The WebGL canvas -->
+        <canvas id="shader-canvas"></canvas>
+
+        <!-- 
+          Step 1: SEO Optimization (Accessibility)
+          - Added aria-label for accessibility and to give context to crawlers.
+        -->
+        <button id="open-menu-btn" aria-label="Open configuration menu" class="fixed top-4 left-4 z-20 p-2 bg-gray-900 bg-opacity-50 backdrop-blur-md rounded-lg border border-gray-700 text-white hover:bg-opacity-75 transition-all">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
+            </svg>
+        </button>
+    </main>
+
+    <!-- 
+      Step 1: SEO Optimization (Semantic HTML)
+      - <aside> is the correct semantic tag for this slide-out menu.
+    -->
+    <aside id="config-menu" class="fixed top-0 left-0 h-full w-80 md:w-96 bg-gray-900 bg-opacity-70 backdrop-blur-lg border-r border-gray-700 shadow-2xl z-30 transform -translate-x-full">
+        <div class="flex flex-col h-full">
+            <!-- Menu Header -->
+            <div class="flex justify-between items-center p-4 border-b border-gray-700">
+                <h2 class="text-xl font-bold">Configuration</h2>
+                <button id="close-menu-btn" aria-label="Close configuration menu" class="p-1 rounded-md hover:bg-gray-700 transition-colors">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6" aria-hidden="true">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+            </div>
+
+            <!-- Scrollable Menu Content -->
+            <div id="menu-content" class="flex-grow p-4 overflow-y-auto space-y-6">
+                <!-- Slider groups will be injected here by JS -->
+            </div>
+
+            <!-- Menu Footer -->
+            <div class="p-4 border-t border-gray-700 space-y-2">
+                <div class="flex space-x-2">
+                    <button id="reset-btn" class="w-1/2 bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition-colors">
+                        Reset
+                    </button>
+                    <button id="randomize-btn" class="w-1/2 bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-4 rounded-lg transition-colors">
+                        Randomize
+                    </button>
+                </div>
+                <button id="export-btn" class="w-full bg-purple-600 hover:bg-purple-700 text-white font-medium py-2 px-4 rounded-lg transition-colors">
+                    Export 4K Wallpaper
+                </button>
+            </div>
+        </div>
+    </aside>
+
+    <!-- 
+      Step 4: Technical Enhancements
+      - The JavaScript Logic block is UNCHANGED, as requested.
+      - <script type="module"> is deferred by default, which is optimal for performance (non-blocking).
+    -->
+    <script type="module">
+        // --- Configuration ---
+
+        // Default values from the shader
+        const defaultConfig = {
+            maxSteps: 100,
+            minDist: 0.004,
+            deScale: 0.07,
+            cameraZ: 9.0,
+            rotationSpeed: 0.333,
+            sphereRadius: 4.0,
+            fractalFreq1: 0.3,
+            fractalFreq2: 0.6,
+            smoothstepX: 0.4, // The 'x' in smoothstep(edge0, edge1, x)
+            colorFreq: 0.7,
+            colorR: 1.0,
+            colorG: 3.0,
+            colorB: 0.0,
+            exposureScale: 1.0,
+        };
+
+        // Configuration for all sliders
+        const sliderConfig = [
+            { group: 'Raymarching', id: 'maxSteps', label: 'Max Steps', min: 20, max: 120, step: 1 },
+            { group: 'Raymarching', id: 'minDist', label: 'Min Distance', min: 0.001, max: 0.010, step: 0.001 },
+            { group: 'Raymarching', id: 'deScale', label: 'DE Scale', min: 0.0, max: 0.2, step: 0.005 },
+            
+            { group: 'Camera', id: 'cameraZ', label: 'Camera Z', min: 1.0, max: 15.0, step: 0.1 },
+            { group: 'Camera', id: 'rotationSpeed', label: 'Rotation Speed', min: -2.0, max: 2.0, step: 0.01 },
+            
+            { group: 'SDF (Fractal Sphere)', id: 'sphereRadius', label: 'Sphere Radius', min: 1.0, max: 8.0, step: 0.1 },
+            { group: 'SDF (Fractal Sphere)', id: 'fractalFreq1', label: 'Fractal Freq 1', min: 0.01, max: 2.0, step: 0.01 },
+            { group: 'SDF (Fractal Sphere)', id: 'fractalFreq2', label: 'Fractal Freq 2', min: 0.01, max: 2.0, step: 0.01 },
+            { group: 'SDF (Fractal Sphere)', id: 'smoothstepX', label: 'Smoothstep X', min: 0.0, max: 1.0, step: 0.01 },
+            
+            { group: 'Coloring', id: 'colorFreq', label: 'Color Freq', min: 0.0, max: 2.0, step: 0.01 },
+            { group: 'Coloring', id: 'colorR', label: 'Color Red', min: 0.0, max: 5.0, step: 0.1 },
+            { group: 'Coloring', id: 'colorG', label: 'Color Green', min: 0.0, max: 5.0, step: 0.1 },
+            { group: 'Coloring', id: 'colorB', label: 'Color Blue', min: 0.0, max: 5.0, step: 0.1 },
+            { group: 'Coloring', id: 'exposureScale', label: 'Exposure', min: 0.1, max: 5.0, step: 0.1 }
+        ];
+
+        // --- GLSL Shaders ---
+
+        const vertexShaderSource = `
+            attribute vec2 a_position;
+            void main() {
+                gl_Position = vec4(a_position, 0.0, 1.0);
+            }
+        `;
+
+        // The user's shader, parameterized with uniforms
+        const fragmentShaderSource = `
+            precision highp float;
+            uniform vec2 u_resolution;
+            uniform float u_time;
+
+            // Config Uniforms
+            uniform float u_maxSteps;
+            uniform float u_minDist;
+            uniform float u_deScale;
+            uniform float u_cameraZ;
+            uniform float u_rotationSpeed;
+            uniform float u_sphereRadius;
+            uniform float u_fractalFreq1;
+            uniform float u_fractalFreq2;
+            uniform float u_smoothstepX;
+            uniform float u_colorFreq;
+            uniform vec3 u_colorVec;
+            uniform float u_exposureScale;
+
+            // 2D rotation matrix function
+            mat2 rotate2D(float a) {
+                return mat2(cos(a), -sin(a), sin(a), cos(a));
+            }
+            
+            // tanh function for vec4, as it's not standard in WebGL 1.0 (GLSL ES 1.0)
+            vec4 tanh(vec4 x) {
+                vec4 exp2x = exp(2.0 * x);
+                return (exp2x - 1.0) / (exp2x + 1.0);
+            }
+
+            // Main shader logic adapted from the user's code
+            void main() {
+                vec2 r = u_resolution.xy;
+                vec2 FC = gl_FragCoord.xy;
+                float t = u_time;
+                vec4 o = vec4(0.0);
+
+                float d = 0.0, s = 0.0;
+                
+                // Original: for(float i,d,s;++i<1e2;)
+                // We use a standard GLSL loop. We start i at 1.0 to match the ++i logic.
+                
+                // GLSL ES 1.0 requires a constant loop limit. 
+                // We loop to the max of the slider (120) + 1 and break based on the uniform.
+                for(int i = 1; i < 121; ++i) {
+                    if (float(i) >= u_maxSteps) break; // Break based on uniform
+                
+                    // Original: vec3 p=vec3((FC.xy*2.-r.xy)/r.y*d,d-9.);
+                    vec3 p = vec3((FC.xy * 2.0 - r.xy) / r.y * d, d - u_cameraZ);
+                    
+                    // Original: p.yz*=rotate2D(-t/3.);
+                    p.yz *= rotate2D(-t * u_rotationSpeed);
+                    
+                    // Original: d+=s=.004+.07*abs(1.-smoothstep(cos(dot(sin(ceil(p/.3)),cos(ceil(p/.6)).yzx)),length(p)-4.,.4)-i/1e2);
+                    float fractal = cos(dot(sin(ceil(p / u_fractalFreq1)), cos(ceil(p / u_fractalFreq2)).yzx));
+                    float sphere = length(p) - u_sphereRadius;
+                    float smooth = smoothstep(fractal, sphere, u_smoothstepX); // u_smoothstepX = 0.4 by default
+                    
+                    // Use float(i) for calculations
+                    float stepScale = float(i) / u_maxSteps;
+                    
+                    d += s = u_minDist + u_deScale * abs(1.0 - smooth - stepScale);
+                    
+                    // Original: o.rgb+=max(sin(vec3(1,3,0)*i*.7)/s,-length(p*p));
+                    // Use float(i) for calculations
+                    o.rgb += max(sin(u_colorVec * float(i) * u_colorFreq) / s, -length(p*p));
+                }
+                
+                // Original: o=tanh(o*o/1e6);
+                // We use our manually defined tanh() function
+                vec4 color = o * o / (1e6 * u_exposureScale);
+                o = tanh(color);
+                
+                gl_FragColor = vec4(o.rgb, 1.0);
+            }
+        `;
+
+        // --- WebGL & App Logic ---
+
+        let gl, program, positionBuffer, uniformLocations;
+        let startTime = Date.now();
+        let config = { ...defaultConfig };
+
+        function init() {
+            // Setup Canvas and WebGL
+            const canvas = document.getElementById('shader-canvas');
+            gl = canvas.getContext('webgl');
+            if (!gl) {
+                console.error("WebGL not supported!");
+                document.body.innerHTML = '<div class="text-white text-center p-8">Sorry, your browser does not support WebGL, which is required for this visualization.</div>';
+                return;
+            }
+
+            // Compile shaders and link program
+            const vertexShader = createShader(gl, gl.VERTEX_SHADER, vertexShaderSource);
+            const fragmentShader = createShader(gl, gl.FRAGMENT_SHADER, fragmentShaderSource);
+            program = createProgram(gl, vertexShader, fragmentShader);
+            gl.useProgram(program);
+
+            // Setup a full-screen quad
+            positionBuffer = gl.createBuffer();
+            gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
+            const positions = [-1, -1, 1, -1, -1, 1, -1, 1, 1, -1, 1, 1];
+            gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(positions), gl.STATIC_DRAW);
+            const positionAttributeLocation = gl.getAttribLocation(program, "a_position");
+            gl.enableVertexAttribArray(positionAttributeLocation);
+            gl.vertexAttribPointer(positionAttributeLocation, 2, gl.FLOAT, false, 0, 0);
+
+            // Get uniform locations
+            uniformLocations = {
+                resolution: gl.getUniformLocation(program, "u_resolution"),
+                time: gl.getUniformLocation(program, "u_time"),
+                maxSteps: gl.getUniformLocation(program, "u_maxSteps"),
+                minDist: gl.getUniformLocation(program, "u_minDist"),
+                deScale: gl.getUniformLocation(program, "u_deScale"),
+                cameraZ: gl.getUniformLocation(program, "u_cameraZ"),
+                rotationSpeed: gl.getUniformLocation(program, "u_rotationSpeed"),
+                sphereRadius: gl.getUniformLocation(program, "u_sphereRadius"),
+                fractalFreq1: gl.getUniformLocation(program, "u_fractalFreq1"),
+                fractalFreq2: gl.getUniformLocation(program, "u_fractalFreq2"),
+                smoothstepX: gl.getUniformLocation(program, "u_smoothstepX"),
+                colorFreq: gl.getUniformLocation(program, "u_colorFreq"),
+                colorVec: gl.getUniformLocation(program, "u_colorVec"),
+                exposureScale: gl.getUniformLocation(program, "u_exposureScale"),
+            };
+
+            // Setup UI
+            setupUI();
+
+            // Start render loop
+            requestAnimationFrame(renderLoop);
+        }
+
+        function createShader(gl, type, source) {
+            const shader = gl.createShader(type);
+            gl.shaderSource(shader, source);
+            gl.compileShader(shader);
+            if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+                console.error('Error compiling shader:', gl.getShaderInfoLog(shader));
+                gl.deleteShader(shader);
+                return null;
+            }
+            return shader;
+        }
+
+        function createProgram(gl, vertexShader, fragmentShader) {
+            const program = gl.createProgram();
+            gl.attachShader(program, vertexShader);
+            gl.attachShader(program, fragmentShader);
+            gl.linkProgram(program);
+            if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
+                console.error('Error linking program:', gl.getProgramInfoLog(program));
+                gl.deleteProgram(program);
+                return null;
+            }
+            return program;
+        }
+
+        function setupUI() {
+            const menu = document.getElementById('config-menu');
+            const openBtn = document.getElementById('open-menu-btn');
+            const closeBtn = document.getElementById('close-menu-btn');
+            const resetBtn = document.getElementById('reset-btn');
+            const menuContent = document.getElementById('menu-content');
+            const randomizeBtn = document.getElementById('randomize-btn');
+            const exportBtn = document.getElementById('export-btn');
+
+            openBtn.addEventListener('click', () => menu.classList.add('open'));
+            closeBtn.addEventListener('click', () => menu.classList.remove('open'));
+
+            // Group sliders
+            const groups = {};
+            sliderConfig.forEach(item => {
+                if (!groups[item.group]) {
+                    groups[item.group] = [];
+                }
+                groups[item.group].push(item);
+            });
+
+            // Generate sliders
+            for (const groupName in groups) {
+                const groupContainer = document.createElement('div');
+                groupContainer.className = 'space-y-4';
+                
+                const groupTitle = document.createElement('h3');
+                groupTitle.className = 'text-lg font-semibold text-blue-300 border-b border-gray-700 pb-1';
+                groupTitle.textContent = groupName;
+                groupContainer.appendChild(groupTitle);
+
+                groups[groupName].forEach(item => {
+                    const sliderHTML = `
+                        <div class="space-y-1">
+                            <div class="flex justify-between items-center">
+                                <label for="${item.id}" class="text-sm font-medium text-gray-300">${item.label}</label>
+                                <span id="${item.id}-value" class="text-sm font-mono text-gray-400 bg-gray-800 px-2 py-0.5 rounded-md">${defaultConfig[item.id]}</span>
+                            </div>
+                            <input type="range" id="${item.id}" name="${item.id}"
+                                   min="${item.min}" max="${item.max}" step="${item.step}" value="${defaultConfig[item.id]}"
+                                   class="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer range-lg">
+                        </div>
+                    `;
+                    groupContainer.insertAdjacentHTML('beforeend', sliderHTML);
+                });
+                menuContent.appendChild(groupContainer);
+            }
+            
+            // Add event listeners for all sliders
+            sliderConfig.forEach(item => {
+                const slider = document.getElementById(item.id);
+                const valueSpan = document.getElementById(`${item.id}-value`);
+                
+                slider.addEventListener('input', (e) => {
+                    const value = parseFloat(e.target.value);
+                    config[item.id] = value;
+                    valueSpan.textContent = value.toFixed(item.step.toString().split('.')[1]?.length || 0);
+                });
+            });
+
+            // Reset button logic
+            resetBtn.addEventListener('click', () => {
+                config = { ...defaultConfig };
+                sliderConfig.forEach(item => {
+                    const slider = document.getElementById(item.id);
+                    const valueSpan = document.getElementById(`${item.id}-value`);
+                    slider.value = defaultConfig[item.id];
+                    valueSpan.textContent = defaultConfig[item.id];
+                });
+            });
+
+            // Randomize button logic
+            randomizeBtn.addEventListener('click', () => {
+                sliderConfig.forEach(item => {
+                    const slider = document.getElementById(item.id);
+                    const valueSpan = document.getElementById(`${item.id}-value`);
+                    
+                    const randValue = Math.random() * (item.max - item.min) + item.min;
+                    const roundedValue = parseFloat(randValue.toFixed(item.step.toString().split('.')[1]?.length || 0));
+
+                    config[item.id] = roundedValue;
+                    slider.value = roundedValue;
+                    valueSpan.textContent = roundedValue;
+                });
+            });
+
+            // Export button logic
+            exportBtn.addEventListener('click', () => export4KImage(exportBtn));
+        }
+        
+        function resizeCanvas() {
+            const canvas = gl.canvas;
+            const dpr = window.devicePixelRatio || 1;
+            const displayWidth = Math.round(canvas.clientWidth * dpr);
+            const displayHeight = Math.round(canvas.clientHeight * dpr);
+
+            if (canvas.width !== displayWidth || canvas.height !== displayHeight) {
+                canvas.width = displayWidth;
+                canvas.height = displayHeight;
+                gl.viewport(0, 0, canvas.width, canvas.height);
+                return true; // Resized
+            }
+            return false; // No resize
+        }
+
+        function drawScene(time) {
+            // Update uniforms
+            gl.uniform2f(uniformLocations.resolution, gl.canvas.width, gl.canvas.height);
+            gl.uniform1f(uniformLocations.time, time);
+            
+            gl.uniform1f(uniformLocations.maxSteps, config.maxSteps);
+            gl.uniform1f(uniformLocations.minDist, config.minDist);
+            gl.uniform1f(uniformLocations.deScale, config.deScale);
+            gl.uniform1f(uniformLocations.cameraZ, config.cameraZ);
+            gl.uniform1f(uniformLocations.rotationSpeed, config.rotationSpeed);
+            gl.uniform1f(uniformLocations.sphereRadius, config.sphereRadius);
+            gl.uniform1f(uniformLocations.fractalFreq1, config.fractalFreq1);
+            gl.uniform1f(uniformLocations.fractalFreq2, config.fractalFreq2);
+            gl.uniform1f(uniformLocations.smoothstepX, config.smoothstepX);
+            gl.uniform1f(uniformLocations.colorFreq, config.colorFreq);
+            gl.uniform3f(uniformLocations.colorVec, config.colorR, config.colorG, config.colorB);
+            gl.uniform1f(uniformLocations.exposureScale, config.exposureScale);
+
+            // Draw the quad
+            gl.drawArrays(gl.TRIANGLES, 0, 6);
+        }
+
+        function renderLoop() {
+            resizeCanvas();
+
+            const time = (Date.now() - startTime) * 0.001; // Time in seconds
+            drawScene(time);
+
+            // Loop
+            requestAnimationFrame(renderLoop);
+        }
+
+        function export4KImage(exportBtn) {
+            exportBtn.textContent = 'Exporting...';
+            exportBtn.disabled = true;
+
+            // Allow UI to update
+            setTimeout(() => {
+                const canvas = gl.canvas;
+                const originalWidth = canvas.width;
+                const originalHeight = canvas.height;
+                
+                const exportWidth = 3840;
+                const exportHeight = 2160;
+
+                // Force resize canvas for 4K export
+                canvas.width = exportWidth;
+                canvas.height = exportHeight;
+                gl.viewport(0, 0, exportWidth, exportHeight);
+
+                // Draw a single high-res frame
+                const time = (Date.now() - startTime) * 0.001;
+                drawScene(time);
+
+                // Get data URL and trigger download
+                const dataURL = canvas.toDataURL('image/png');
+                const link = document.createElement('a');
+                link.href = dataURL;
+                link.download = 'shader_wallpaper_4k.png';
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+
+                // Restore original canvas size and viewport
+                canvas.width = originalWidth;
+                canvas.height = originalHeight;
+                gl.viewport(0, 0, originalWidth, originalHeight);
+
+                // Reset button
+                exportBtn.textContent = 'Export 4K Wallpaper';
+                exportBtn.disabled = false;
+            }, 50); // 50ms timeout to ensure UI renders "Exporting..."
+        }
+
+        // --- Start the app ---
+        init();
+
+    </script>
+</body>
+</html>
